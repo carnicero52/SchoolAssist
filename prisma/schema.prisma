@@ -1,0 +1,342 @@
+// SchoolAssist - Multi-tenant School Attendance System Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  directUrl    = env("DIRECT_URL")
+  relationMode = "prisma"
+}
+
+// =====================================
+// INSTITUTION (Multi-tenant - Cada Colegio/Universidad)
+// =====================================
+model Institution {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  brandColor  String   @default("#3b82f6")
+  secondaryColor String? @default("#64748b")
+  accentColor   String? @default("#22c55e")
+  address     String?
+  email       String?
+  phone       String?
+  slogan      String?
+  
+  // Notification Settings
+  telegramToken     String?
+  telegramChatId   String?
+  smtpHost         String?
+  smtpPort         Int?
+  smtpUser         String?
+  smtpPassword    String?
+  smtpFrom        String?
+  callmebotKey     String?
+  callmebotKeyParents String?  // Separate for parent notifications
+  
+  // Academic Structure
+  educationLevel   String?   // primaria, bachillerato, universidad
+  timezone        String    @default("America/Caracas")
+  defaultTheme    String    @default("system") // light, dark, system
+  
+  // Time Settings
+  graceMinutes    Int        @default(15)  // Minutes after which it's "late"
+  maxDailyScans  Int        @default(10)
+  
+  active        Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  admins       Staff[]
+  students    Student[]
+  shifts      Shift[]
+  levels      Level[]
+  subjects    Subject[]
+  scanPoints  ScanPoint[]
+  notifications Notification[]
+  settings    InstitutionSettings?
+
+  @@index([slug])
+  @@index([active])
+}
+
+// =====================================
+// STAFF (Users - Director, Admin, Porter)
+// =====================================
+model Staff {
+  id            String   @id @default(cuid())
+  institutionId String
+  name          String
+  email         String   @unique
+  password     String
+  role         String   @default("admin") // director, admin, portero
+  phone        String?
+  telegramChatId String?
+  active       Boolean  @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+  @@index([email])
+}
+
+// =====================================
+// STUDENT (Estudiante)
+// =====================================
+model Student {
+  id            String   @id @default(cuid())
+  institutionId String
+  code          String   @unique // Código de estudiante
+  
+  // Personal Info
+  name          String
+  cedula        String?
+  birthDate    DateTime?
+  photo        String?   // URL de foto - requerida
+  gender       String?
+  
+  // Contact Info
+  email         String?
+  phone         String?
+  
+  // Guardian Info (for primaria - required)
+  guardianName   String?
+  guardianPhone String?
+  guardianEmail String?
+  telegramChatId String?
+  whatsappPhone String?
+  
+  // Academic Info
+  levelId       String?
+  groupId       String?
+  
+  // Stats
+  totalAttendances Int @default(0)
+  totalAbsences  Int @default(0)
+  totalLates    Int @default(0)
+  
+  active        Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  level       Level?    @relation(fields: [levelId], references: [id])
+  group       Group?    @relation(fields: [groupId], references: [id])
+  attendances Attendance[]
+  qrCode      QRCode?
+
+  @@index([institutionId])
+  @@index([code])
+  @@index([cedula])
+}
+
+// =====================================
+// QR CODE (Credencial del estudiante)
+// =====================================
+model QRCode {
+  id         String   @id @default(cuid())
+  studentId  String   @unique
+  code      String   @unique
+  active    Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+}
+
+// =====================================
+// LEVEL (Nivel - Primaria, Bachillerato, Universidad)
+// =====================================
+model Level {
+  id            String   @id @default(cuid())
+  institutionId String
+  name          String   // "Primaria", "Bachillerato", "Universidad"
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  groups      Group[]
+  subjects   Subject[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// GROUP (Grado/Grupo - 1A, 1B, etc.)
+// =====================================
+model Group {
+  id        String  @id @default(cuid())
+  levelId   String
+  name     String  // "1A", "1B", "10A"
+  order    Int     @default(0)
+  active   Boolean @default(true)
+
+  level     Level    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  students  Student[]
+  schedules Schedule[]
+
+  @@index([levelId])
+}
+
+// =====================================
+// SUBJECT (Materia - opcional)
+// =====================================
+model Subject {
+  id            String   @id @default(cuid())
+  institutionId String
+  levelId       String
+  name         String
+  teacher     String?
+  active      Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  level       Level      @relation(fields: [levelId], references: [id])
+  schedules   Schedule[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// SCHEDULE (Horario por grupo)
+// =====================================
+model Schedule {
+  id          String   @id @default(cuid())
+  groupId     String
+  subjectId   String?
+  dayOfWeek  Int      // 0=Domingo, 1=Lunes...
+  startTime  String   // "07:00"
+  endTime    String   // "07:45"
+  active     Boolean  @default(true)
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id])
+
+  @@index([groupId])
+}
+
+// =====================================
+// SHIFT (Turnos - Mañana, Tarde, Noche)
+// =====================================
+model Shift {
+  id              String   @id @default(cuid())
+  institutionId    String
+  name            String   // "Mañana", "Tarde", "Noche"
+  startTime       String   // "07:00"
+  endTime        String   // "12:00"
+  graceMinutes   Int      @default(15)
+  active         Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  attendances  Attendance[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// SCAN POINT (Punto de entrada)
+// =====================================
+model ScanPoint {
+  id              String   @id @default(cuid())
+  institutionId   String
+  name            String   // "Entrada Principal", "Estacionamiento"
+  location        String?  // GPS coordinates
+  active          Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+}
+
+// =====================================
+// ATTENDANCE (Registro de asistencia)
+// =====================================
+model Attendance {
+  id          String   @id @default(cuid())
+  studentId   String
+  institutionId String
+  shiftId     String?
+  scanPointId  String?
+  
+  type        String   // "in" (entrada), "out" (salida)
+  status     String   @default("on_time") // on_time, late, absent
+  
+  scanTime   DateTime @default(now())
+  date       String   // YYYY-MM-DD for quick filtering
+  notes      String?
+  
+  //GPS
+  location   String?
+
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  shift      Shift?  @relation(fields: [shiftId], references: [id])
+  scanPoint  ScanPoint? @relation(fields: [scanPointId], references: [id])
+
+  @@index([studentId])
+  @@index([date])
+  @@index([institutionId])
+  @@index([scanTime])
+}
+
+// =====================================
+// NOTIFICATION (Registro de notificaciones)
+// =====================================
+model Notification {
+  id            String   @id @default(cuid())
+  institutionId String
+  type         String   // manual, check_in, check_out, summary
+  channel      String   // telegram, whatsapp, email
+  recipient    String   // phone/email/chat_id
+  subject      String?
+  message      String
+  status       String   @default("pending") // pending, sent, failed
+  sentAt       DateTime?
+  createdAt    DateTime @default(now())
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+  @@index([status])
+}
+
+// =====================================
+// INSTITUTION SETTINGS (Configs adicionales)
+// =====================================
+model InstitutionSettings {
+  id              String   @id @default(cuid())
+  institutionId   String   @unique
+  allowGuardian   Boolean  @default(true)  // Require guardian for primaria
+  requirePhoto   Boolean  @default(true)
+  sendCredentialEmail Boolean @default(true)
+  dailySummary    Boolean  @default(true)
+  summaryTime     String   @default("18:00")
+  customFields   Json?     // Custom fields schema
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+}
+
+// =====================================
+// ACTION LOG (Registro de acciones)
+// =====================================
+model ActionLog {
+  id          String   @id @default(cuid())
+  userId      String
+  institutionId String
+  action     String   // login, create_student, delete, etc.
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([institutionId])
+  @@index([userId])
+}
