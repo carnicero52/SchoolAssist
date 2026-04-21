@@ -118,7 +118,7 @@ export default function NotificationsPage() {
             <Button 
               variant="outline" 
               className="w-full justify-start text-left"
-              onClick={() => setForm({...form, message: '📢 RECORDATORIO: Reunión de padres mañana a las 8:00 AM en la sede principal.')}}
+              onClick={() => setForm({...form, message: '📢 RECORDATORIO: Reunión de padres mañana a las 8:00 AM en la sede principal.'})}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Recordatorio de Reunión
