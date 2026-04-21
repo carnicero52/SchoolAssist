@@ -1,5 +1,6 @@
 import * as React from "react"
-import { type ButtonProps } from "@/components/ui/button"
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
