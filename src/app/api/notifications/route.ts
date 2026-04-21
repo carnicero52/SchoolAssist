@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         port: institution.smtpPort || 587,
         user: institution.smtpUser || '',
         password: institution.smtpPassword || '',
-        from: institution.smtpFrom
+        from: institution.smtpFrom || undefined
       })
     } else if (!channel) {
       // Broadcast - send to all with notifications enabled
