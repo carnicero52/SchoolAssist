@@ -1,0 +1,336 @@
+// SchoolAssist - Multi-tenant School Attendance System Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =====================================
+// INSTITUTION
+// =====================================
+model Institution {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  brandColor  String   @default("#3b82f6")
+  secondaryColor String? @default("#64748b")
+  accentColor   String? @default("#22c55e")
+  address     String?
+  email       String?
+  phone       String?
+  slogan      String?
+  
+  // Notification Settings
+  telegramToken     String?
+  telegramChatId   String?
+  smtpHost         String?
+  smtpPort         Int?
+  smtpUser         String?
+  smtpPassword    String?
+  smtpFrom        String?
+  callmebotKey     String?
+  callmebotKeyParents String?
+  
+  // Academic Structure
+  educationLevel   String?
+  timezone        String    @default("America/Caracas")
+  defaultTheme    String    @default("system")
+  
+  // Time Settings
+  graceMinutes    Int        @default(15)
+  maxDailyScans  Int        @default(10)
+  
+  active        Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  admins       Staff[]
+  students    Student[]
+  shifts      Shift[]
+  levels      Level[]
+  subjects    Subject[]
+  scanPoints  ScanPoint[]
+  notifications Notification[]
+  attendances Attendance[]
+  settings    InstitutionSettings?
+
+  @@index([slug])
+  @@index([active])
+}
+
+// =====================================
+// STAFF
+// =====================================
+model Staff {
+  id            String   @id @default(cuid())
+  institutionId String
+  name          String
+  email         String   @unique
+  password     String
+  role         String   @default("admin")
+  phone        String?
+  telegramChatId String?
+  active       Boolean  @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+  @@index([email])
+}
+
+// =====================================
+// STUDENT
+// =====================================
+model Student {
+  id            String   @id @default(cuid())
+  institutionId String
+  code          String   @unique
+  
+  name          String
+  cedula        String?
+  birthDate    DateTime?
+  photo        String?
+  gender       String?
+  
+  email         String?
+  phone         String?
+  
+  guardianName   String?
+  guardianPhone String?
+  guardianEmail String?
+  telegramChatId String?
+  whatsappPhone String?
+  
+  levelId       String?
+  groupId       String?
+  
+  totalAttendances Int @default(0)
+  totalAbsences  Int @default(0)
+  totalLates    Int @default(0)
+  
+  active        Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  level       Level?    @relation(fields: [levelId], references: [id])
+  group       Group?    @relation(fields: [groupId], references: [id])
+  attendances Attendance[]
+  qrCode      QRCode?
+
+  @@index([institutionId])
+  @@index([code])
+  @@index([cedula])
+}
+
+// =====================================
+// QR CODE
+// =====================================
+model QRCode {
+  id         String   @id @default(cuid())
+  studentId  String   @unique
+  code      String   @unique
+  active    Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+}
+
+// =====================================
+// LEVEL
+// =====================================
+model Level {
+  id            String   @id @default(cuid())
+  institutionId String
+  name          String
+  order        Int      @default(0)
+  active       Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  students  Student[]
+  groups      Group[]
+  subjects   Subject[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// GROUP
+// =====================================
+model Group {
+  id        String  @id @default(cuid())
+  levelId   String
+  name     String
+  order    Int     @default(0)
+  active   Boolean @default(true)
+
+  level     Level    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  students  Student[]
+  schedules Schedule[]
+
+  @@index([levelId])
+}
+
+// =====================================
+// SUBJECT
+// =====================================
+model Subject {
+  id            String   @id @default(cuid())
+  institutionId String
+  levelId       String
+  name         String
+  teacher     String?
+  active      Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  level       Level      @relation(fields: [levelId], references: [id])
+  schedules   Schedule[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// SCHEDULE
+// =====================================
+model Schedule {
+  id          String   @id @default(cuid())
+  groupId     String
+  subjectId   String?
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  active     Boolean  @default(true)
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id])
+
+  @@index([groupId])
+}
+
+// =====================================
+// SHIFT
+// =====================================
+model Shift {
+  id              String   @id @default(cuid())
+  institutionId    String
+  name            String
+  startTime       String
+  endTime        String
+  graceMinutes   Int      @default(15)
+  active         Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  attendances  Attendance[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// SCAN POINT
+// =====================================
+model ScanPoint {
+  id              String   @id @default(cuid())
+  institutionId   String
+  name            String
+  location        String?
+  active          Boolean  @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+
+  @@index([institutionId])
+}
+
+// =====================================
+// ATTENDANCE
+// =====================================
+model Attendance {
+  id          String   @id @default(cuid())
+  studentId   String
+  institutionId String
+  shiftId     String?
+  scanPointId  String?
+  
+  type        String
+  status     String   @default("on_time")
+  
+  scanTime   DateTime @default(now())
+  date       String
+  notes      String?
+  location   String?
+
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  shift      Shift?  @relation(fields: [shiftId], references: [id])
+  scanPoint  ScanPoint? @relation(fields: [scanPointId], references: [id])
+
+  @@index([studentId])
+  @@index([date])
+  @@index([institutionId])
+  @@index([scanTime])
+}
+
+// =====================================
+// NOTIFICATION
+// =====================================
+model Notification {
+  id            String   @id @default(cuid())
+  institutionId String
+  type         String
+  channel      String
+  recipient    String
+  subject      String?
+  message      String
+  status       String   @default("pending")
+  sentAt       DateTime?
+  createdAt    DateTime @default(now())
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+  @@index([status])
+}
+
+// =====================================
+// INSTITUTION SETTINGS
+// =====================================
+model InstitutionSettings {
+  id              String   @id @default(cuid())
+  institutionId   String   @unique
+  allowGuardian   Boolean  @default(true)
+  requirePhoto   Boolean  @default(true)
+  sendCredentialEmail Boolean @default(true)
+  dailySummary    Boolean  @default(true)
+  summaryTime     String   @default("18:00")
+  customFields   Json?
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+}
+
+// =====================================
+// ACTION LOG
+// =====================================
+model ActionLog {
+  id          String   @id @default(cuid())
+  userId      String
+  institutionId String
+  action     String
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([institutionId])
+  @@index([userId])
+}
