@@ -1,8 +1,13 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendTelegramNotification } from '@/lib/notifications'
+import { verifySuperadmin } from '@/lib/superadmin-auth'
 
 export async function POST(request: NextRequest) {
+  // Verify superadmin authentication
+  const authError = verifySuperadmin(request)
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { institutionId, type, message } = body
@@ -16,7 +21,7 @@ export async function POST(request: NextRequest) {
     const adminChatId = process.env.SUPERADMIN_TELEGRAM_CHAT_ID
 
     if (!adminToken || !adminChatId) {
-      return NextResponse.json({ error: 'Configuración de Super Admin no disponible' }, { status: 500 })
+      return NextResponse.json({ error: 'Configuracion de Super Admin no disponible' }, { status: 500 })
     }
 
     let msg = ''
@@ -27,6 +32,7 @@ export async function POST(request: NextRequest) {
     const sent = await sendTelegramNotification(adminChatId, msg, adminToken)
     return NextResponse.json({ success: sent })
   } catch (error) {
+    console.error('Superadmin notify error:', error)
     return NextResponse.json({ error: 'Error al enviar' }, { status: 500 })
   }
 }

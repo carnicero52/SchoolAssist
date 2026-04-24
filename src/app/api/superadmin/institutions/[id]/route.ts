@@ -1,10 +1,15 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { verifySuperadmin } from '@/lib/superadmin-auth'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Verify superadmin authentication
+  const authError = verifySuperadmin(request)
+  if (authError) return authError
+
   try {
     const { id } = await params
     const { active } = await request.json()
@@ -15,6 +20,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, institution: { id: institution.id, active: institution.active } })
   } catch (error) {
+    console.error('Superadmin update error:', error)
     return NextResponse.json({ error: 'Error al actualizar' }, { status: 500 })
   }
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +9,6 @@ import { GraduationCap, LogIn, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,17 +28,41 @@ export default function LoginPage() {
 
       if (data.error) {
         toast.error(data.error)
-      } else {
-        toast.success(`Bienvenido, ${data.user.name}`)
-        if (data.user.role === 'director' || data.user.role === 'admin') {
-          router.push('/admin')
-        } else {
-          router.push('/admin/scan')
+        setLoading(false)
+        return
+      }
+
+      toast.success(`Bienvenido, ${data.user.name}`)
+
+      // Verify session is established before navigating
+      let retries = 0
+      let sessionVerified = false
+
+      while (retries < 3 && !sessionVerified) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        try {
+          const meRes = await fetch('/api/auth/me')
+          if (meRes.ok) {
+            sessionVerified = true
+          }
+        } catch {
+          // ignore
         }
+        retries++
+      }
+
+      if (sessionVerified) {
+        // Use full page navigation to ensure all state is properly reset
+        const targetUrl = (data.user.role === 'director' || data.user.role === 'admin')
+          ? '/admin'
+          : '/admin/scan'
+        window.location.href = targetUrl
+      } else {
+        toast.error('Error al verificar sesion. Intenta de nuevo.')
+        setLoading(false)
       }
     } catch {
       toast.error('Error de conexion')
-    } finally {
       setLoading(false)
     }
   }
