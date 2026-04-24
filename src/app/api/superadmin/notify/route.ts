@@ -1,9 +1,15 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendTelegramNotification } from '@/lib/notifications'
+import { isSuperAdminAuthenticated } from '@/lib/superadmin-auth'
 
 // POST - Send notification to institute director
 export async function POST(request: NextRequest) {
+  // Verify super admin auth
+  if (!isSuperAdminAuthenticated(request)) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { institutionId, type, message } = body
@@ -36,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Send notification to Super Admin
     let sent = false
-    
+
     if (type === 'payment_reminder') {
       const msg = `💰 RECORDATORIO DE PAGO\n\nInstituto: ${institution.name}\n\n${message}`
       sent = await sendTelegramNotification(adminChatId, msg, adminToken)

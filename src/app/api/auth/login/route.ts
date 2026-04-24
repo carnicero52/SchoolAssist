@@ -36,17 +36,31 @@ export async function POST(request: NextRequest) {
       data: { lastLogin: new Date() }
     })
 
-    // Return user info (in real app, create session/JWT)
-    return NextResponse.json({
-      user: {
-        id: staff.id,
-        name: staff.name,
-        email: staff.email,
-        role: staff.role,
-        institutionId: staff.institutionId,
-        institutionName: staff.institution.name
-      }
+    // Create session data
+    const sessionData = {
+      id: staff.id,
+      name: staff.name,
+      email: staff.email,
+      role: staff.role,
+      institutionId: staff.institutionId,
+      institutionName: staff.institution.name
+    }
+
+    // Return user info and set session cookie
+    const response = NextResponse.json({
+      user: sessionData
     })
+
+    // Set session cookie (base64 encoded)
+    response.cookies.set('session', btoa(JSON.stringify(sessionData)), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 hours
+      path: '/'
+    })
+
+    return response
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Edit, Save, X } from 'lucide-react'
+import { Plus, Trash2, X, Layers } from 'lucide-react'
 
 interface Level { id: string; name: string; order: number; _count: { groups: number } }
 interface Group { id: string; name: string; order: number; _count: { students: number } }
@@ -17,7 +17,7 @@ export default function LevelsPage() {
   const [newLevel, setNewLevel] = useState('')
   const [newGroup, setNewGroup] = useState('')
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
-  const institutionId = 'demo' // Would come from session
+  const institutionId = 'demo'
 
   useEffect(() => { loadData() }, [])
 
@@ -71,93 +71,72 @@ export default function LevelsPage() {
     setGroups(data.groups || [])
   }
 
-  if (loading) return <div className="p-8 text-white">Cargando...</div>
+  if (loading) return <div className="flex items-center justify-center min-h-[50vh]"><div className="animate-spin h-8 w-8 border-4 border-amber-400 border-t-transparent rounded-full" /></div>
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold">Niveles y Grupos</h1>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold">Niveles y Grupos</h1>
+        <p className="text-[hsl(28,10%,55%)] mt-1">Organiza la estructura académica</p>
+      </div>
 
-        {/* Levels */}
-        <Card className="bg-slate-800 border-slate-700">
+      <Card className="bg-[hsl(24,22%,13%)] border-[hsl(24,18%,22%)]">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center text-base">
+            <span>Niveles</span>
+            <Badge className="bg-amber-600">{levels.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 mb-4">
+            <Input placeholder="Nuevo nivel (ej: Primaria)" value={newLevel} onChange={(e) => setNewLevel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && createLevel()} className="bg-[hsl(24,18%,18%)] border-[hsl(24,18%,22%)]" />
+            <Button onClick={createLevel} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"><Plus className="h-4 w-4" /></Button>
+          </div>
+          <div className="space-y-2">
+            {levels.map(level => (
+              <div key={level.id} className="flex justify-between items-center p-3 rounded-xl bg-[hsl(24,18%,18%)] border border-[hsl(24,18%,22%)] hover:border-amber-500/30 transition-colors">
+                <span className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center"><Layers className="h-4 w-4 text-amber-400" /></div>
+                  <button onClick={() => loadGroups(level.id)} className="font-medium text-sm hover:text-amber-400 transition-colors">{level.name}</button>
+                  <Badge variant="outline" className="border-[hsl(24,18%,22%)] text-[hsl(28,10%,55%)]">{level._count.groups} grupos</Badge>
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => deleteLevel(level.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            ))}
+            {levels.length === 0 && (
+              <div className="text-center py-8"><Layers className="h-12 w-12 text-[hsl(28,10%,35%)] mx-auto mb-3" /><p className="text-[hsl(28,10%,55%)]">No hay niveles creados</p></div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedLevel && (
+        <Card className="bg-[hsl(24,22%,13%)] border-[hsl(24,18%,22%)]">
           <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              Niveles
-              <Badge>{levels.length}</Badge>
+            <CardTitle className="flex justify-between items-center text-base">
+              <span>Grupos de {levels.find(l => l.id === selectedLevel)?.name}</span>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedLevel(null)} className="text-[hsl(28,10%,55%)]"><X className="h-4 w-4" /></Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 mb-4">
-              <Input
-                placeholder="Nuevo nivel (ej: Primaria)"
-                value={newLevel}
-                onChange={(e) => setNewLevel(e.target.value)}
-                className="bg-slate-700 border-slate-600"
-              />
-              <Button onClick={createLevel} className="bg-blue-500">
-                <Plus className="h-4 w-4" />
-              </Button>
+              <Input placeholder="Nuevo grupo (ej: 1A)" value={newGroup} onChange={(e) => setNewGroup(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && createGroup()} className="bg-[hsl(24,18%,18%)] border-[hsl(24,18%,22%)]" />
+              <Button onClick={createGroup} className="bg-green-600 hover:bg-green-700 text-white"><Plus className="h-4 w-4" /></Button>
             </div>
-
             <div className="space-y-2">
-              {levels.map(level => (
-                <div key={level.id} className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                  <span className="flex items-center gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => loadGroups(level.id)}>
-                      {level.name}
-                    </Button>
-                    <Badge variant="outline">{level._count.groups} grupos</Badge>
+              {groups.map(group => (
+                <div key={group.id} className="flex justify-between items-center p-3 rounded-xl bg-[hsl(24,18%,18%)] border border-[hsl(24,18%,22%)]">
+                  <span className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">{group.name}</span>
+                    <Badge variant="outline" className="border-[hsl(24,18%,22%)] text-[hsl(28,10%,55%)]">{group._count.students} est.</Badge>
                   </span>
-                  <Button size="sm" variant="destructive" onClick={() => deleteLevel(level.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => deleteGroup(group.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-
-        {/* Groups */}
-        {selectedLevel && (
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                Grupos de {levels.find(l => l.id === selectedLevel)?.name}
-                <Button size="sm" variant="ghost" onClick={() => setSelectedLevel(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 mb-4">
-                <Input
-                  placeholder="Nuevo grupo (ej: 1A)"
-                  value={newGroup}
-                  onChange={(e) => setNewGroup(e.target.value)}
-                  className="bg-slate-700 border-slate-600"
-                />
-                <Button onClick={createGroup} className="bg-green-500">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                {groups.map(group => (
-                  <div key={group.id} className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                    <span className="flex items-center gap-2">
-                      {group.name}
-                      <Badge variant="outline">{group._count.students} estudiantes</Badge>
-                    </span>
-                    <Button size="sm" variant="destructive" onClick={() => deleteGroup(group.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      )}
     </div>
   )
 }

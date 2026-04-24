@@ -10,14 +10,14 @@ export async function GET(request: Request) {
     const levelId = searchParams.get('levelId')
     const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limit = parseInt(searchParams.get('limit') || '50')
 
     if (!institutionId) {
       return NextResponse.json({ error: 'institutionId requerido' }, { status: 400 })
     }
 
     const where: any = { institutionId }
-    
+
     if (levelId) where.levelId = levelId
     if (search) {
       where.OR = [
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       students: students.map(s => ({
         id: s.id,
-        code: s.name,
+        code: s.code,
         name: s.name,
         cedula: s.cedula,
         photo: s.photo,
@@ -50,8 +50,12 @@ export async function GET(request: Request) {
         guardianName: s.guardianName,
         guardianPhone: s.guardianPhone,
         guardianEmail: s.guardianEmail,
+        telegramChatId: s.telegramChatId,
+        whatsappPhone: s.whatsappPhone,
         level: s.level?.name,
         group: s.group?.name,
+        levelId: s.levelId,
+        groupId: s.groupId,
         totalAttendances: s.totalAttendances,
         totalAbsences: s.totalAbsences,
         totalLates: s.totalLates,
@@ -69,7 +73,7 @@ export async function GET(request: Request) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
+    const {
       institutionId, name, cedula, birthDate, photo, gender,
       email, phone, guardianName, guardianPhone, guardianEmail,
       telegramChatId, whatsappPhone, levelId, groupId
@@ -110,12 +114,82 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       student: { ...student, code }
     })
   } catch (error) {
     console.error('Create student error:', error)
     return NextResponse.json({ error: 'Error al crear estudiante' }, { status: 500 })
+  }
+}
+
+// PUT - Update student
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const {
+      name, cedula, birthDate, photo, gender,
+      email, phone, guardianName, guardianPhone, guardianEmail,
+      telegramChatId, whatsappPhone, levelId, groupId
+    } = body
+
+    const student = await db.student.update({
+      where: { id },
+      data: {
+        name,
+        cedula,
+        birthDate: birthDate ? new Date(birthDate) : undefined,
+        photo,
+        gender,
+        email,
+        phone,
+        guardianName,
+        guardianPhone,
+        guardianEmail,
+        telegramChatId,
+        whatsappPhone,
+        levelId,
+        groupId
+      }
+    })
+
+    return NextResponse.json({ success: true, student })
+  } catch (error) {
+    console.error('Update student error:', error)
+    return NextResponse.json({ error: 'Error al actualizar estudiante' }, { status: 500 })
+  }
+}
+
+// DELETE - Delete student
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    // Delete QR code first (if exists)
+    await db.qRCode.deleteMany({ where: { studentId: id } })
+
+    // Delete attendance records
+    await db.attendance.deleteMany({ where: { studentId: id } })
+
+    // Delete student
+    await db.student.delete({ where: { id } })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete student error:', error)
+    return NextResponse.json({ error: 'Error al eliminar estudiante' }, { status: 500 })
   }
 }

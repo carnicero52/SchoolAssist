@@ -23,49 +23,56 @@
   --radius: var(--radius);
 }
 
+/* ========================================
+   SCHOOLASSIST - WARM BROWN THEME
+   Brown + Gold accent color scheme
+   ======================================== */
+
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.2%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.2%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.2%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 98%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  /* Light mode - warm brown tones */
+  --background: 30 20% 96%;
+  --foreground: 24 30% 12%;
+  --card: 30 25% 94%;
+  --card-foreground: 24 30% 12%;
+  --popover: 30 25% 94%;
+  --popover-foreground: 24 30% 12%;
+  --primary: 28 70% 42%;
+  --primary-foreground: 30 40% 96%;
+  --secondary: 30 15% 88%;
+  --secondary-foreground: 24 30% 20%;
+  --muted: 30 12% 90%;
+  --muted-foreground: 24 10% 45%;
+  --accent: 38 85% 52%;
+  --accent-foreground: 24 30% 12%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 30 40% 96%;
+  --border: 28 15% 82%;
+  --input: 28 15% 82%;
+  --ring: 28 70% 42%;
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: 222.2 84% 4.2%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.2%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.2%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 65.3%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17%;
-  --input: 217.2 32.6% 17%;
-  --ring: 224.3 76.3% 48%;
+  /* Dark mode - deep warm brown/chocolate */
+  --background: 24 25% 10%;
+  --foreground: 30 30% 92%;
+  --card: 24 22% 13%;
+  --card-foreground: 30 30% 92%;
+  --popover: 24 22% 13%;
+  --popover-foreground: 30 30% 92%;
+  --primary: 28 65% 48%;
+  --primary-foreground: 30 30% 96%;
+  --secondary: 24 18% 18%;
+  --secondary-foreground: 30 30% 85%;
+  --muted: 24 15% 20%;
+  --muted-foreground: 28 10% 55%;
+  --accent: 38 80% 55%;
+  --accent-foreground: 24 25% 10%;
+  --destructive: 0 62% 45%;
+  --destructive-foreground: 30 30% 96%;
+  --border: 24 18% 22%;
+  --input: 24 18% 22%;
+  --ring: 28 65% 48%;
 }
 
 * {
@@ -75,4 +82,35 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(24 22% 13%);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(24 18% 28%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(28 65% 48%);
+}
+
+/* Fix for mobile viewport */
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100%;
 }

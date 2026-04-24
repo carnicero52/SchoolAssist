@@ -12,6 +12,7 @@ interface ScanPoint { id: string; name: string; location: string }
 export default function ScanPointsPage() {
   const [scanPoints, setScanPoints] = useState<ScanPoint[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
   const [newPoint, setNewPoint] = useState('')
   const [newLocation, setNewLocation] = useState('')
   const institutionId = 'demo'
@@ -36,6 +37,7 @@ export default function ScanPointsPage() {
     })
     setNewPoint('')
     setNewLocation('')
+    setShowForm(false)
     loadData()
   }
 
@@ -45,69 +47,62 @@ export default function ScanPointsPage() {
     loadData()
   }
 
-  if (loading) return <div className="p-8 text-white">Cargando...</div>
+  if (loading) return <div className="flex items-center justify-center min-h-[50vh]"><div className="animate-spin h-8 w-8 border-4 border-amber-400 border-t-transparent rounded-full" /></div>
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold">Puntos de Entrada</h1>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Puntos de Entrada</h1>
+          <p className="text-[hsl(28,10%,55%)] mt-1">Configura dónde se escanea</p>
+        </div>
+        <Button onClick={() => setShowForm(!showForm)} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+          <Plus className="h-4 w-4 mr-2" />Nuevo
+        </Button>
+      </div>
 
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle>Crear Punto</CardTitle>
-          </CardHeader>
+      {showForm && (
+        <Card className="bg-[hsl(24,22%,13%)] border-[hsl(24,18%,22%)]">
+          <CardHeader><CardTitle className="text-base">Crear Punto</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Input
-                placeholder="Nombre (ej: Entrada Principal)"
-                value={newPoint}
-                onChange={(e) => setNewPoint(e.target.value)}
-                className="bg-slate-700 border-slate-600"
-              />
-              <Input
-                placeholder="Ubicación/GPS (opcional)"
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-                className="bg-slate-700 border-slate-600"
-              />
-              <Button onClick={createPoint} className="w-full bg-blue-500">
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Punto
+              <Input placeholder="Nombre (ej: Entrada Principal)" value={newPoint} onChange={(e) => setNewPoint(e.target.value)} className="bg-[hsl(24,18%,18%)] border-[hsl(24,18%,22%)]" />
+              <Input placeholder="Ubicación/GPS (opcional)" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} className="bg-[hsl(24,18%,18%)] border-[hsl(24,18%,22%)]" />
+              <Button onClick={createPoint} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                <Plus className="h-4 w-4 mr-2" />Crear Punto
               </Button>
             </div>
           </CardContent>
         </Card>
+      )}
 
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Puntos Existentes
-              </div>
-              <Badge>{scanPoints.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {scanPoints.map(point => (
-                <div key={point.id} className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+      <Card className="bg-[hsl(24,22%,13%)] border-[hsl(24,18%,22%)]">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center text-base">
+            <span className="flex items-center gap-2"><MapPin className="h-5 w-5 text-amber-400" />Puntos Existentes</span>
+            <Badge className="bg-amber-600">{scanPoints.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {scanPoints.map(point => (
+              <div key={point.id} className="flex justify-between items-center p-3 rounded-xl bg-[hsl(24,18%,18%)] border border-[hsl(24,18%,22%)]">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center"><MapPin className="h-4 w-4 text-amber-400" /></div>
                   <div>
-                    <p className="font-medium">{point.name}</p>
-                    <p className="text-sm text-slate-400">{point.location || 'Sin ubicación'}</p>
+                    <p className="font-medium text-sm">{point.name}</p>
+                    <p className="text-xs text-[hsl(28,10%,55%)]">{point.location || 'Sin ubicación'}</p>
                   </div>
-                  <Button size="sm" variant="destructive" onClick={() => deletePoint(point.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
-              ))}
-              {scanPoints.length === 0 && (
-                <p className="text-center text-slate-500 py-4">No hay puntos</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                <Button size="sm" variant="ghost" onClick={() => deletePoint(point.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            ))}
+            {scanPoints.length === 0 && (
+              <div className="text-center py-8"><MapPin className="h-12 w-12 text-[hsl(28,10%,35%)] mx-auto mb-3" /><p className="text-[hsl(28,10%,55%)]">No hay puntos de entrada</p></div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
