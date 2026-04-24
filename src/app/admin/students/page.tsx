@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Plus, Trash2, Search, Download, User, Users, FileDown } from 'lucide-react'
+import { Plus, Trash2, Search, Download, User, Users, FileDown, Camera, Link, Upload, X, Pencil } from 'lucide-react'
 import { useAuth } from '@/components/auth-provider'
 import { toast } from 'sonner'
 
@@ -40,6 +40,7 @@ interface Student {
   guardianName: string
   guardianPhone: string
   guardianEmail: string
+  telegramChatId: string
   level: string
   levelId: string
   group: string
@@ -55,9 +56,11 @@ const emptyForm = {
   cedula: '',
   email: '',
   phone: '',
+  photo: '',
   guardianName: '',
   guardianPhone: '',
   guardianEmail: '',
+  telegramChatId: '',
 }
 
 export default function StudentsPage() {
@@ -69,6 +72,19 @@ export default function StudentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 })
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editForm, setEditForm] = useState<Student | null>(null)
+  const [editing, setEditing] = useState(false)
+
+  // Photo upload state
+  const [photoMode, setPhotoMode] = useState<'upload' | 'url'>('url')
+  const [uploading, setUploading] = useState(false)
+  const [editPhotoMode, setEditPhotoMode] = useState<'upload' | 'url'>('url')
+  const [editUploading, setEditUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const editFileInputRef = useRef<HTMLInputElement>(null)
 
   const loadStudents = useCallback(async (searchTerm: string = '') => {
     try {
@@ -97,6 +113,48 @@ export default function StudentsPage() {
     }, 300)
     return () => clearTimeout(timer)
   }, [search, loadStudents])
+
+  const uploadPhoto = async (file: File, target: 'create' | 'edit'): Promise<string | null> => {
+    const setUploadingState = target === 'create' ? setUploading : setEditUploading
+    setUploadingState(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (data.success && data.url) {
+        return data.url
+      } else {
+        toast.error(data.error || 'Error al subir foto')
+        return null
+      }
+    } catch {
+      toast.error('Error al subir foto')
+      return null
+    } finally {
+      setUploadingState(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const url = await uploadPhoto(file, target)
+    if (url) {
+      if (target === 'create') {
+        updateForm('photo', url)
+      } else if (editForm) {
+        setEditForm({ ...editForm, photo: url })
+      }
+    }
+    // Reset file input
+    if (target === 'create' && fileInputRef.current) fileInputRef.current.value = ''
+    if (target === 'edit' && editFileInputRef.current) editFileInputRef.current.value = ''
+  }
 
   const createStudent = async () => {
     if (!form.name.trim()) {
@@ -133,6 +191,52 @@ export default function StudentsPage() {
     }
   }
 
+  const updateStudent = async () => {
+    if (!editForm || !editForm.name.trim()) {
+      toast.error('El nombre es requerido')
+      return
+    }
+
+    setEditing(true)
+    try {
+      const res = await fetch('/api/students', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editForm.id,
+          name: editForm.name,
+          cedula: editForm.cedula,
+          email: editForm.email,
+          phone: editForm.phone,
+          photo: editForm.photo,
+          guardianName: editForm.guardianName,
+          guardianPhone: editForm.guardianPhone,
+          guardianEmail: editForm.guardianEmail,
+          telegramChatId: editForm.telegramChatId,
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Estudiante actualizado exitosamente')
+        setEditDialogOpen(false)
+        setEditForm(null)
+        loadStudents(search)
+      } else {
+        toast.error(data.error || 'Error al actualizar estudiante')
+      }
+    } catch {
+      toast.error('Error de conexion')
+    } finally {
+      setEditing(false)
+    }
+  }
+
+  const openEditDialog = (student: Student) => {
+    setEditForm({ ...student })
+    setEditPhotoMode('url')
+    setEditDialogOpen(true)
+  }
+
   const deleteStudent = async (id: string, name: string) => {
     if (!confirm(`¿Estas seguro de eliminar a ${name}? Esta accion no se puede deshacer.`)) return
 
@@ -157,6 +261,109 @@ export default function StudentsPage() {
 
   const updateForm = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Photo input component for reuse
+  const PhotoInput = ({ target }: { target: 'create' | 'edit' }) => {
+    const currentPhoto = target === 'create' ? form.photo : editForm?.photo || ''
+    const mode = target === 'create' ? photoMode : editPhotoMode
+    const setMode = target === 'create' ? setPhotoMode : setEditPhotoMode
+    const isUploading = target === 'create' ? uploading : editUploading
+    const ref = target === 'create' ? fileInputRef : editFileInputRef
+
+    return (
+      <div className="space-y-3">
+        <Label>Foto del estudiante</Label>
+
+        {/* Photo preview */}
+        {currentPhoto && (
+          <div className="relative inline-block">
+            <div className="h-20 w-20 rounded-xl overflow-hidden ring-2 ring-teal-200 dark:ring-teal-700">
+              <img src={currentPhoto} alt="Foto" className="h-20 w-20 object-cover" />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (target === 'create') updateForm('photo', '')
+                else if (editForm) setEditForm({ ...editForm, photo: '' })
+              }}
+              className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Mode toggle */}
+        <div className="flex gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === 'url'
+                ? 'bg-white dark:bg-stone-700 text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Link className="h-3.5 w-3.5" />
+            URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === 'upload'
+                ? 'bg-white dark:bg-stone-700 text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Subir
+          </button>
+        </div>
+
+        {mode === 'url' ? (
+          <Input
+            placeholder="https://ejemplo.com/foto.jpg"
+            value={currentPhoto}
+            onChange={(e) => {
+              if (target === 'create') updateForm('photo', e.target.value)
+              else if (editForm) setEditForm({ ...editForm, photo: e.target.value })
+            }}
+          />
+        ) : (
+          <div>
+            <input
+              ref={ref}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, target)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => ref.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent mr-2" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Camera className="h-4 w-4 mr-2" />
+                  Seleccionar foto
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP o GIF. Maximo 5MB</p>
+          </div>
+        )}
+      </div>
+    )
   }
 
   if (loading) {
@@ -200,7 +407,7 @@ export default function StudentsPage() {
                 Nuevo Estudiante
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Registrar Nuevo Estudiante</DialogTitle>
                 <DialogDescription>
@@ -248,6 +455,9 @@ export default function StudentsPage() {
                   </div>
                 </div>
 
+                {/* Photo Input */}
+                <PhotoInput target="create" />
+
                 <Separator />
 
                 <div>
@@ -280,6 +490,18 @@ export default function StudentsPage() {
                         value={form.guardianEmail}
                         onChange={(e) => updateForm('guardianEmail', e.target.value)}
                       />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="telegramChatId">Chat ID de Telegram</Label>
+                      <Input
+                        id="telegramChatId"
+                        placeholder="123456789"
+                        value={form.telegramChatId}
+                        onChange={(e) => updateForm('telegramChatId', e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Para recibir notificaciones de entrada, salida y tardanzas
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -314,6 +536,128 @@ export default function StudentsPage() {
           </Dialog>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Estudiante</DialogTitle>
+            <DialogDescription>
+              Modifica los datos del estudiante.
+            </DialogDescription>
+          </DialogHeader>
+          {editForm && (
+            <div className="grid gap-4 py-2">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Nombre completo *</Label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cedula</Label>
+                  <Input
+                    value={editForm.cedula || ''}
+                    onChange={(e) => setEditForm({ ...editForm, cedula: e.target.value })}
+                    placeholder="V-12345678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email estudiante</Label>
+                  <Input
+                    type="email"
+                    value={editForm.email || ''}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="estudiante@email.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefono estudiante</Label>
+                  <Input
+                    value={editForm.phone || ''}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="+58 412 1234567"
+                  />
+                </div>
+              </div>
+
+              {/* Photo Input */}
+              <PhotoInput target="edit" />
+
+              <Separator />
+
+              <div>
+                <p className="text-sm font-medium text-foreground mb-3">Datos del Apoderado</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nombre apoderado</Label>
+                    <Input
+                      value={editForm.guardianName || ''}
+                      onChange={(e) => setEditForm({ ...editForm, guardianName: e.target.value })}
+                      placeholder="Maria Perez"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefono apoderado</Label>
+                    <Input
+                      value={editForm.guardianPhone || ''}
+                      onChange={(e) => setEditForm({ ...editForm, guardianPhone: e.target.value })}
+                      placeholder="+58 414 1234567"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Email apoderado</Label>
+                    <Input
+                      type="email"
+                      value={editForm.guardianEmail || ''}
+                      onChange={(e) => setEditForm({ ...editForm, guardianEmail: e.target.value })}
+                      placeholder="apoderado@email.com"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Chat ID de Telegram</Label>
+                    <Input
+                      value={editForm.telegramChatId || ''}
+                      onChange={(e) => setEditForm({ ...editForm, telegramChatId: e.target.value })}
+                      placeholder="123456789"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Para recibir notificaciones de entrada, salida y tardanzas
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={editing}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={updateStudent}
+              disabled={editing || !editForm?.name.trim()}
+              className="bg-teal-600 hover:bg-teal-700"
+            >
+              {editing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  Guardar Cambios
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Search */}
       <Card className="border-0 shadow-sm">
@@ -363,7 +707,7 @@ export default function StudentsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-full bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center ring-1 ring-teal-200 dark:ring-teal-800">
+                        <div className="h-8 w-8 rounded-full bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center ring-1 ring-teal-200 dark:ring-teal-800 overflow-hidden">
                           {student.photo ? (
                             <img
                               src={student.photo}
@@ -418,15 +762,26 @@ export default function StudentsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-                        onClick={() => deleteStudent(student.id, student.name)}
-                        title="Eliminar estudiante"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-stone-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/30 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                          onClick={() => openEditDialog(student)}
+                          title="Editar estudiante"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                          onClick={() => deleteStudent(student.id, student.name)}
+                          title="Eliminar estudiante"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,7 @@ interface StudentData {
   cedula: string | null
   guardianName: string | null
   guardianEmail: string | null
+  qrCode: string | null
 }
 
 export default function CredentialPage() {
@@ -31,6 +32,37 @@ export default function CredentialPage() {
   const [searching, setSearching] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const credentialRef = useRef<HTMLDivElement>(null)
+
+  // Generate QR code when student is selected
+  useEffect(() => {
+    if (!selectedStudent) {
+      setQrDataUrl(null)
+      return
+    }
+
+    const generateQR = async () => {
+      try {
+        const QRCode = (await import('qrcode')).default
+        const codeToEncode = selectedStudent.qrCode || selectedStudent.code
+        const dataUrl = await QRCode.toDataURL(codeToEncode, {
+          width: 200,
+          margin: 1,
+          color: {
+            dark: '#1c1917',
+            light: '#ffffff'
+          }
+        })
+        setQrDataUrl(dataUrl)
+      } catch (err) {
+        console.error('QR generation error:', err)
+        setQrDataUrl(null)
+      }
+    }
+
+    generateQR()
+  }, [selectedStudent])
 
   const searchStudent = async () => {
     const query = searchQuery.trim()
@@ -47,9 +79,24 @@ export default function CredentialPage() {
       const data = await res.json()
 
       if (data.students && data.students.length > 0) {
-        setSearchResults(data.students)
-        if (data.students.length === 1) {
-          setSelectedStudent(data.students[0])
+        // Fetch QR code for each student
+        const studentsWithQR = await Promise.all(
+          data.students.map(async (s: any) => {
+            try {
+              const qrRes = await fetch(`/api/students/${s.id}/qr`)
+              if (qrRes.ok) {
+                const qrData = await qrRes.json()
+                return { ...s, qrCode: qrData.code || null }
+              }
+            } catch {
+              // ignore
+            }
+            return { ...s, qrCode: null }
+          })
+        )
+        setSearchResults(studentsWithQR)
+        if (studentsWithQR.length === 1) {
+          setSelectedStudent(studentsWithQR[0])
         }
       } else {
         setSearchResults([])
@@ -66,9 +113,31 @@ export default function CredentialPage() {
     window.print()
   }
 
-  const downloadCredential = () => {
+  const downloadCredential = async () => {
     if (!selectedStudent) return
-    // Create a simple text-based credential download
+
+    // Try to use canvas-based image download
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      if (credentialRef.current) {
+        const canvas = await html2canvas(credentialRef.current, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+        })
+        const link = document.createElement('a')
+        link.download = `credencial-${selectedStudent.code}.png`
+        link.href = canvas.toDataURL('image/png')
+        link.click()
+        toast.success('Credencial descargada como imagen')
+        return
+      }
+    } catch {
+      // Fallback to text download
+    }
+
+    // Fallback: text file
     const content = [
       'CREDENCIAL ESCOLAR',
       '===================',
@@ -186,7 +255,7 @@ export default function CredentialPage() {
                       : 'bg-stone-50 dark:bg-stone-900/40 hover:bg-stone-100 dark:hover:bg-stone-900/60'
                   }`}
                 >
-                  <div className="h-8 w-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0 overflow-hidden">
                     {s.photo ? (
                       <img src={s.photo} alt={s.name} className="h-8 w-8 rounded-full object-cover" />
                     ) : (
@@ -226,6 +295,7 @@ export default function CredentialPage() {
             {/* Credential Card */}
             <div
               id="credential-card"
+              ref={credentialRef}
               className="bg-white dark:bg-stone-900 text-black dark:text-white rounded-2xl overflow-hidden shadow-xl max-w-sm mx-auto border border-stone-200 dark:border-stone-700 print:shadow-none print:border-stone-300"
             >
               {/* Top accent bar */}
@@ -299,11 +369,21 @@ export default function CredentialPage() {
                   </p>
                 </div>
 
-                {/* QR Code Placeholder */}
+                {/* QR Code - Real generated QR */}
                 <div className="flex justify-center mt-4">
-                  <div className="h-24 w-24 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center border-2 border-dashed border-stone-200 dark:border-stone-700">
-                    <QrCode className="h-12 w-12 text-stone-300 dark:text-stone-600" />
-                  </div>
+                  {qrDataUrl ? (
+                    <div className="bg-white rounded-xl p-2 ring-1 ring-stone-200 dark:ring-stone-700">
+                      <img
+                        src={qrDataUrl}
+                        alt={`QR Code - ${selectedStudent.code}`}
+                        className="h-28 w-28"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-28 w-28 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center border-2 border-dashed border-stone-200 dark:border-stone-700">
+                      <Loader2 className="h-8 w-8 animate-spin text-stone-300" />
+                    </div>
+                  )}
                 </div>
               </div>
 

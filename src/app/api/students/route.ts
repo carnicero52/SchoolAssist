@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
         guardianName: s.guardianName,
         guardianPhone: s.guardianPhone,
         guardianEmail: s.guardianEmail,
+        telegramChatId: s.telegramChatId,
         level: s.level?.name,
         levelId: s.levelId,
         group: s.group?.name,
@@ -110,6 +111,43 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Create student error:', error)
     return NextResponse.json({ error: 'Error al crear estudiante' }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const institutionId = request.headers.get('x-institution-id')
+    const body = await request.json()
+    const { id, name, cedula, photo, email, phone, guardianName, guardianPhone, guardianEmail, telegramChatId } = body
+
+    if (!id || !institutionId) {
+      return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    }
+
+    const existing = await db.student.findUnique({ where: { id } })
+    if (!existing || existing.institutionId !== institutionId) {
+      return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 })
+    }
+
+    const student = await db.student.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(cedula !== undefined && { cedula }),
+        ...(photo !== undefined && { photo }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+        ...(guardianName !== undefined && { guardianName }),
+        ...(guardianPhone !== undefined && { guardianPhone }),
+        ...(guardianEmail !== undefined && { guardianEmail }),
+        ...(telegramChatId !== undefined && { telegramChatId }),
+      }
+    })
+
+    return NextResponse.json({ success: true, student })
+  } catch (error) {
+    console.error('Update student error:', error)
+    return NextResponse.json({ error: 'Error al actualizar estudiante' }, { status: 500 })
   }
 }
 
