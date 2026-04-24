@@ -43,6 +43,7 @@ export async function middleware(request: NextRequest) {
     // Add user info to headers for API routes
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-user-id', payload.userId as string)
+    requestHeaders.set('x-user-name', payload.name as string)
     requestHeaders.set('x-user-email', payload.email as string)
     requestHeaders.set('x-user-role', payload.role as string)
     requestHeaders.set('x-institution-id', payload.institutionId as string)
@@ -62,5 +63,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/:path*', '/superadmin/:path*']
+  matcher: ['/admin/:path*', '/api/:path*', '/superadmin', '/superadmin/:path*']
 }

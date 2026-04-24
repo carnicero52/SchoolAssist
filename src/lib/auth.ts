@@ -6,6 +6,7 @@ const COOKIE_NAME = 'schoolassist-token'
 
 export interface SessionUser {
   userId: string
+  name: string
   email: string
   role: string
   institutionId: string

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { GraduationCap, QrCode, Users, BarChart3, Bell, Shield, Settings, LogIn, ArrowRight, CheckCircle, Smartphone, Zap, Clock, Globe } from 'lucide-react'
 
 export default function HomePage() {
@@ -79,7 +80,7 @@ export default function HomePage() {
       {/* Features Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
-          <Badge className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-0 mb-4">Funcionalidades</Badge>
+          <Badge variant="secondary" className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-0 mb-4">Funcionalidades</Badge>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground">Todo lo que necesitas para<br />gestionar la asistencia</h2>
           <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Herramientas modernas que simplifican el control de asistencia y mantienen a los padres informados en tiempo real</p>
         </div>
@@ -121,7 +122,7 @@ export default function HomePage() {
       <section className="bg-muted/30 py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-14">
-            <Badge className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-0 mb-4">Como Funciona</Badge>
+            <Badge variant="secondary" className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-0 mb-4">Como Funciona</Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">Ponlo en marcha en 3 pasos</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
@@ -135,7 +136,7 @@ export default function HomePage() {
       {/* Advantages Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
-          <Badge className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-0 mb-4">Ventajas</Badge>
+          <Badge variant="secondary" className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-0 mb-4">Ventajas</Badge>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground">Por que elegir SchoolAssist</h2>
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -219,10 +220,3 @@ function AdvantageCard({ icon, title, description }: { icon: React.ReactNode; ti
   )
 }
 
-function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${className || ''}`}>
-      {children}
-    </span>
-  )
-}
