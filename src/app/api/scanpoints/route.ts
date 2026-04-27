@@ -38,6 +38,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT - Update scan point
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, name, location, active } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    }
+
+    const scanPoint = await db.scanPoint.update({
+      where: { id },
+      data: { name, location, active }
+    })
+
+    return NextResponse.json({ success: true, scanPoint })
+  } catch (error) {
+    console.error('Update scan point error:', error)
+    return NextResponse.json({ error: 'Error al actualizar' }, { status: 500 })
+  }
+}
+
 // DELETE - Delete scan point
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url)

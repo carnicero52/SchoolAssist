@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Search, Upload, Download, User } from 'lucide-react'
+import { Plus, Trash2, Search, Upload, Download, User, Edit, X } from 'lucide-react'
 
 interface Student {
   id: string
@@ -15,11 +15,17 @@ interface Student {
   photo: string
   email: string
   phone: string
+  whatsappPhone: string
+  guardianName: string
+  guardianPhone: string
+  guardianEmail: string
   level: string
   group: string
   totalAttendances: number
   totalAbsences: number
   totalLates: number
+  levelId?: string
+  groupId?: string
 }
 
 export default function StudentsPage() {
@@ -27,10 +33,11 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({
-    name: '', cedula: '', email: '', phone: '',
-    guardianName: '', guardianPhone: '', guardianEmail: ''
+    id: '', name: '', cedula: '', email: '', phone: '', whatsappPhone: '',
+    guardianName: '', guardianPhone: '', guardianEmail: '', levelId: '', groupId: ''
   })
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const institutionId = 'demo'
 
   useEffect(() => { loadData() }, [search])
@@ -45,22 +52,62 @@ export default function StudentsPage() {
   }
 
   const createStudent = async () => {
-    if (!form.name) return
+    if (!form.name) return alert('Nombre requerido')
+    const body = { institutionId, ...form, levelId: form.levelId || null, groupId: form.groupId || null }
     await fetch('/api/students', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ institutionId, ...form })
+      body: JSON.stringify(body)
     })
-    setForm({ name: '', cedula: '', email: '', phone: '', guardianName: '', guardianPhone: '', guardianEmail: '' })
-    setShowForm(false)
+    resetForm()
     loadData()
+  }
+
+  const updateStudent = async () => {
+    if (!form.id || !form.name) return alert('ID y nombre requeridos')
+    const body = { id: form.id, name: form.name, cedula: form.cedula, email: form.email, phone: form.phone, whatsappPhone: form.whatsappPhone, guardianName: form.guardianName, guardianPhone: form.guardianPhone, guardianEmail: form.guardianEmail, levelId: form.levelId || null, groupId: form.groupId || null }
+    await fetch('/api/students', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    resetForm()
+    loadData()
+  }
+
+  const deleteStudent = async (id: string) => {
+    if (!confirm('¿Eliminar estudiante (soft delete)?')) return
+    await fetch(`/api/students?id=${id}`, { method: 'DELETE' })
+    loadData()
+  }
+
+  const openEdit = (student: Student) => {
+    setForm({
+      id: student.id,
+      name: student.name,
+      cedula: student.cedula || '',
+      email: student.email || '',
+      phone: student.phone || '',
+      whatsappPhone: student.whatsappPhone || '',
+      guardianName: student.guardianName || '',
+      guardianPhone: student.guardianPhone || '',
+      guardianEmail: student.guardianEmail || '',
+      levelId: student.levelId || '',
+      groupId: student.groupId || ''
+    })
+    setEditingId(student.id)
+    setShowForm(true)
+  }
+
+  const resetForm = () => {
+    setForm({ id: '', name: '', cedula: '', email: '', phone: '', whatsappPhone: '', guardianName: '', guardianPhone: '', guardianEmail: '', levelId: '', groupId: '' })
+    setEditingId(null)
+    setShowForm(false)
   }
 
   const exportCSV = async () => {
     window.open(`/api/export/students?institutionId=${institutionId}&format=csv`, '_blank')
   }
-
-  const filteredStudents = students
 
   if (loading) return <div className="p-8 text-white">Cargando...</div>
 
@@ -74,7 +121,7 @@ export default function StudentsPage() {
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
-            <Button onClick={() => setShowForm(!showForm)} className="bg-blue-500">
+            <Button onClick={() => { resetForm(); setShowForm(!showForm) }} className="bg-blue-500">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo
             </Button>
@@ -92,11 +139,16 @@ export default function StudentsPage() {
           />
         </div>
 
-        {/* Create Form */}
+        {/* Create/Edit Form */}
         {showForm && (
           <Card className="bg-slate-800 border-slate-700">
             <CardHeader>
-              <CardTitle>Nuevo Estudiante</CardTitle>
+              <CardTitle className="flex justify-between items-center">
+                {editingId ? 'Editar Estudiante' : 'Nuevo Estudiante'}
+                <Button size="sm" variant="ghost" onClick={resetForm}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
@@ -113,7 +165,7 @@ export default function StudentsPage() {
                   className="bg-slate-700 border-slate-600"
                 />
                 <Input
-                  placeholder="Email estudiante (opcional)"
+                  placeholder="Email estudiante"
                   value={form.email}
                   onChange={(e) => setForm({...form, email: e.target.value})}
                   className="bg-slate-700 border-slate-600"
@@ -125,28 +177,49 @@ export default function StudentsPage() {
                   className="bg-slate-700 border-slate-600"
                 />
                 <Input
-                  placeholder="Nombre apoderado (Primaria)"
-                  value={form.guardianName}
-                  onChange={(e) => setForm({...form, guardianName: e.target.value})}
+                  placeholder="WhatsApp estudiante (ej: 584123456789)"
+                  value={form.whatsappPhone}
+                  onChange={(e) => setForm({...form, whatsappPhone: e.target.value})}
                   className="bg-slate-700 border-slate-600"
                 />
-                <Input
-                  placeholder="Teléfono apoderado"
-                  value={form.guardianPhone}
-                  onChange={(e) => setForm({...form, guardianPhone: e.target.value})}
-                  className="bg-slate-700 border-slate-600"
-                />
-                <Input
-                  placeholder="Email apoderado"
-                  value={form.guardianEmail}
-                  onChange={(e) => setForm({...form, guardianEmail: e.target.value})}
-                  className="bg-slate-700 border-slate-600"
-                />
+                <div>
+                  <label className="text-sm text-slate-400">Nombre apoderado (opcional para adultos/universitarios)</label>
+                  <Input
+                    placeholder="Nombre apoderado"
+                    value={form.guardianName}
+                    onChange={(e) => setForm({...form, guardianName: e.target.value})}
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400">Teléfono apoderado</label>
+                  <Input
+                    placeholder="Teléfono apoderado"
+                    value={form.guardianPhone}
+                    onChange={(e) => setForm({...form, guardianPhone: e.target.value})}
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400">Email apoderado</label>
+                  <Input
+                    placeholder="Email apoderado"
+                    value={form.guardianEmail}
+                    onChange={(e) => setForm({...form, guardianEmail: e.target.value})}
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
               </div>
-              <Button onClick={createStudent} className="w-full mt-4 bg-green-500">
-                <Plus className="h-4 w-4 mr-2" />
-                Registrar Estudiante
-              </Button>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={editingId ? updateStudent : createStudent} className="flex-1 bg-green-500">
+                  {editingId ? 'Actualizar' : 'Crear'}
+                </Button>
+                {editingId && (
+                  <Button onClick={() => deleteStudent(editingId)} variant="destructive" className="flex-1">
+                    Eliminar
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -155,8 +228,8 @@ export default function StudentsPage() {
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              Lista de Estudiantes
-              <Badge>{filteredStudents.length}</Badge>
+              Lista de Estudi./.
+              <Badge>{students.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -164,18 +237,18 @@ export default function StudentsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="text-left p-3"> Código</th>
+                    <th className="text-left p-3">Código</th>
                     <th className="text-left p-3">Nombre</th>
                     <th className="text-left p-3">Cédula</th>
                     <th className="text-left p-3">Nivel/Grupo</th>
                     <th className="text-center p-3">Asist.</th>
                     <th className="text-center p-3">Faltas</th>
                     <th className="text-center p-3">Tarde</th>
-                    <th className="text-center p-3">Acción</th>
+                    <th className="text-center p-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map(student => (
+                  {students.map(student => (
                     <tr key={student.id} className="border-b border-slate-700">
                       <td className="p-3 text-slate-400">{student.code}</td>
                       <td className="p-3 font-medium flex items-center gap-2">
@@ -194,7 +267,10 @@ export default function StudentsPage() {
                       <td className="p-3 text-center text-red-400">{student.totalAbsences}</td>
                       <td className="p-3 text-center text-orange-400">{student.totalLates}</td>
                       <td className="p-3 text-center">
-                        <Button size="sm" variant="ghost" className="text-red-400">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(student)} className="text-blue-400">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => deleteStudent(student.id)} className="text-red-400">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </td>
@@ -202,7 +278,7 @@ export default function StudentsPage() {
                   ))}
                 </tbody>
               </table>
-              {filteredStudents.length === 0 && (
+              {students.length === 0 && (
                 <p className="text-center text-slate-500 py-8">No hay estudiantes</p>
               )}
             </div>

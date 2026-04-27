@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       students: students.map(s => ({
         id: s.id,
-        code: s.name,
+        code: s.code,
         name: s.name,
         cedula: s.cedula,
         photo: s.photo,
@@ -50,18 +50,86 @@ export async function GET(request: Request) {
         guardianName: s.guardianName,
         guardianPhone: s.guardianPhone,
         guardianEmail: s.guardianEmail,
-        level: s.level?.name,
-        group: s.group?.name,
+        telegramChatId: s.telegramChatId,
+        whatsappPhone: s.whatsappPhone,
+        levelId: s.levelId,
+        groupId: s.groupId,
+        active: s.active,
         totalAttendances: s.totalAttendances,
         totalAbsences: s.totalAbsences,
         totalLates: s.totalLates,
-        active: s.active
+        createdAt: s.createdAt
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     })
   } catch (error) {
-    console.error('Get students error:', error)
-    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    console.error('Create student error:', error)
+    return NextResponse.json({ error: 'Error al crear estudiante' }, { status: 500 })
+  }
+}
+
+// PUT - Update student
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      id, institutionId, name, cedula, birthDate, photo, gender,
+      email, phone, guardianName, guardianPhone, guardianEmail,
+      telegramChatId, whatsappPhone, levelId, groupId, active
+    } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    }
+
+    const student = await db.student.update({
+      where: { id },
+      data: {
+        institutionId,
+        name,
+        cedula,
+        birthDate: birthDate ? new Date(birthDate) : undefined,
+        photo,
+        gender,
+        email,
+        phone,
+        guardianName,
+        guardianPhone,
+        guardianEmail,
+        telegramChatId,
+        whatsappPhone,
+        levelId,
+        groupId,
+        active
+      }
+    })
+
+    return NextResponse.json({ success: true, student })
+  } catch (error) {
+    console.error('Update student error:', error)
+    return NextResponse.json({ error: 'Error al actualizar' }, { status: 500 })
+  }
+}
+
+// DELETE - Delete (soft) student
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    }
+
+    await db.student.update({
+      where: { id },
+      data: { active: false }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete student error:', error)
+    return NextResponse.json({ error: 'Error al eliminar' }, { status: 500 })
   }
 }
 

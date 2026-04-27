@@ -86,6 +86,33 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* Daily Summary Action */}
+        <div className="flex justify-center">
+          <Button 
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/daily-summary', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ institutionId: 'demo' })
+                })
+                const data = await res.json()
+                if (data.success) {
+                  alert('✅ Resumen diario enviado al director')
+                } else {
+                  alert('❌ ' + (data.error || 'Error'))
+                }
+              } catch (e) {
+                alert('Error al enviar resumen')
+              }
+            }}
+            className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600"
+          >
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Enviar Resumen Diario al Director
+          </Button>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-slate-800 border-slate-700">

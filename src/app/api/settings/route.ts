@@ -1,13 +1,18 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
-// GET - Get institution settings
+// GET - Get institution settings (if no institutionId, returns first active)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const institutionId = searchParams.get('institutionId')
+  let institutionId = searchParams.get('institutionId')
 
   if (!institutionId) {
-    return NextResponse.json({ error: 'institutionId requerido' }, { status: 400 })
+    // Devuelve primera institución activa (modo desarrollo)
+    const institution = await db.institution.findFirst({ where: { active: true } })
+    if (!institution) {
+      return NextResponse.json({ error: 'No hay instituciones configuradas' }, { status: 404 })
+    }
+    institutionId = institution.id
   }
 
   const institution = await db.institution.findUnique({
@@ -15,28 +20,38 @@ export async function GET(request: Request) {
     include: { settings: true }
   })
 
+  if (!institution) {
+    return NextResponse.json({ error: 'Instituto no encontrado' }, { status: 404 })
+  }
+
   return NextResponse.json({
     institution: {
-      id: institution?.id,
-      name: institution?.name,
-      logo: institution?.logo,
-      brandColor: institution?.brandColor,
-      secondaryColor: institution?.secondaryColor,
-      accentColor: institution?.accentColor,
-      address: institution?.address,
-      email: institution?.email,
-      phone: institution?.phone,
-      slogan: institution?.slogan,
-      educationLevel: institution?.educationLevel,
-      timezone: institution?.timezone,
-      defaultTheme: institution?.defaultTheme,
-      graceMinutes: institution?.graceMinutes,
-      telegramToken: !!institution?.telegramToken,
-      telegramChatId: !!institution?.telegramChatId,
-      smtpHost: !!institution?.smtpHost,
-      callmebotKey: !!institution?.callmebotKey
+      id: institution.id,
+      name: institution.name,
+      logo: institution.logo,
+      brandColor: institution.brandColor,
+      secondaryColor: institution.secondaryColor,
+      accentColor: institution.accentColor,
+      address: institution.address,
+      email: institution.email,
+      phone: institution.phone,
+      slogan: institution.slogan,
+      educationLevel: institution.educationLevel,
+      timezone: institution.timezone,
+      defaultTheme: institution.defaultTheme,
+      graceMinutes: institution.graceMinutes,
+      telegramToken: institution.telegramToken || '',
+      telegramChatId: institution.telegramChatId || '',
+      callmebotKey: institution.callmebotKey || '',
+      callmebotKeyParents: institution.callmebotKeyParents || '',
+      directorWhatsappPhone: institution.directorWhatsappPhone || '',
+      smtpHost: institution.smtpHost || '',
+      smtpPort: institution.smtpPort || 587,
+      smtpUser: institution.smtpUser || '',
+      smtpPassword: institution.smtpPassword || '',
+      smtpFrom: institution.smtpFrom || ''
     },
-    settings: institution?.settings
+    settings: institution.settings
   })
 }
 
@@ -48,7 +63,7 @@ export async function PUT(request: NextRequest) {
       institutionId, name, logo, brandColor, secondaryColor, accentColor,
       address, email, phone, slogan, educationLevel, timezone, defaultTheme,
       graceMinutes, telegramToken, telegramChatId, smtpHost, smtpPort, smtpUser, 
-      smtpPassword, smtpFrom, callmebotKey, callmebotKeyParents
+      smtpPassword, smtpFrom, callmebotKey, callmebotKeyParents, directorWhatsappPhone
     } = body
 
     if (!institutionId) {
@@ -79,7 +94,8 @@ export async function PUT(request: NextRequest) {
         smtpPassword,
         smtpFrom,
         callmebotKey,
-        callmebotKeyParents
+        callmebotKeyParents,
+        directorWhatsappPhone
       }
     })
 

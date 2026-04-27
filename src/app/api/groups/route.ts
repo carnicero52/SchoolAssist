@@ -43,6 +43,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT - Update group
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, name, order, active } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    }
+
+    const group = await db.group.update({
+      where: { id },
+      data: { name, order, active }
+    })
+
+    return NextResponse.json({ success: true, group })
+  } catch (error) {
+    console.error('Update group error:', error)
+    return NextResponse.json({ error: 'Error al actualizar' }, { status: 500 })
+  }
+}
+
 // DELETE - Delete group
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url)

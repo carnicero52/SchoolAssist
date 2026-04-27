@@ -4,10 +4,57 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { School, Users, QrCode, BarChart3, Shield, Bell, Settings, LogIn, GraduationCap, Clock, CheckCircle } from 'lucide-react'
+import { School, Users, QrCode, BarChart3, Shield, Bell, Settings, LogIn, GraduationCap, Clock, CheckCircle, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 
 export default function HomePage() {
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({
+    name: '', slug: '', email: '', phone: '', address: '', logo: '',
+    brandColor: '#3b82f6', secondaryColor: '#64748b', accentColor: '#22c55e',
+    educationLevel: ''
+  })
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name || !form.email || !form.slug) {
+      setMessage('Nombre, email y slug son obligatorios')
+      setStatus('error')
+      return
+    }
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/superadmin/institutions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      })
+      const data = await res.json()
+      if (data.success) {
+        setStatus('success')
+        if (data.adminCredentials) {
+          setMessage(
+            `✅ Instituto creado: ${data.institution.name}\n` +
+            `👤 Admin: ${data.adminCredentials.email}\n` +
+            `🔐 Contraseña temporal: ${data.adminCredentials.password}\n` +
+            `⚠️ Cambia la contraseña al iniciar sesión.`
+          )
+        } else {
+          setMessage(`✅ Instituto creado: ${data.institution.name}.`)
+        }
+        setForm({ name: '', slug: '', email: '', phone: '', address: '', logo: '', brandColor: '#3b82f6', secondaryColor: '#64748b', accentColor: '#22c55e', educationLevel: '' })
+      } else {
+        setStatus('error')
+        setMessage(data.error || 'Error al crear instituto')
+      }
+    } catch (e) {
+      setStatus('error')
+      setMessage('Error de conexión')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900">
       {/* Hero */}
@@ -35,7 +82,26 @@ export default function HomePage() {
                 Iniciar Sesión
               </Button>
             </Link>
+            <Button 
+              size="lg" 
+              onClick={() => setShowForm(true)}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Registrar Instituto
+            </Button>
           </div>
+
+          {/* Status Message */}
+          {status !== 'idle' && (
+            <div className={`mt-4 p-4 rounded-lg max-w-md mx-auto ${
+              status === 'success' ? 'bg-green-500/20 border border-green-500 text-green-200' :
+              status === 'error' ? 'bg-red-500/20 border border-red-500 text-red-200' :
+              'bg-blue-500/20 border border-blue-500 text-blue-200'
+            }`}>
+              {message}
+            </div>
+          )}
         </div>
         
         {/* Features */}
@@ -77,6 +143,138 @@ export default function HomePage() {
           <p>SchoolAssist © 2026 - Sistema de Asistencia Escolar</p>
         </div>
       </div>
+
+      {/* Registration Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Plus className="h-5 w-5 text-green-400" />
+                Registrar Nuevo Instituto
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Nombre del Instituto *</label>
+                  <Input
+                    value={form.name}
+                    onChange={(e) => setForm({...form, name: e.target.value})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="Ej: Colegio San Juan"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Slug (URL única) *</label>
+                  <Input
+                    value={form.slug}
+                    onChange={(e) => setForm({...form, slug: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="ej: san-juan"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Email *</label>
+                  <Input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({...form, email: e.target.value})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="contacto@instituto.edu.ve"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Teléfono</label>
+                  <Input
+                    value={form.phone}
+                    onChange={(e) => setForm({...form, phone: e.target.value})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="+58 212 123 4567"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Dirección</label>
+                  <Input
+                    value={form.address}
+                    onChange={(e) => setForm({...form, address: e.target.value})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="Av. Principal, Caracas"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Logo URL</label>
+                  <Input
+                    value={form.logo}
+                    onChange={(e) => setForm({...form, logo: e.target.value})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Color Principal</label>
+                  <Input
+                    type="color"
+                    value={form.brandColor}
+                    onChange={(e) => setForm({...form, brandColor: e.target.value})}
+                    className="h-10 bg-slate-800 border-gray-700 mt-1 w-full"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Color Secundario</label>
+                  <Input
+                    type="color"
+                    value={form.secondaryColor}
+                    onChange={(e) => setForm({...form, secondaryColor: e.target.value})}
+                    className="h-10 bg-slate-800 border-gray-700 mt-1 w-full"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 font-medium">Color Acento</label>
+                  <Input
+                    type="color"
+                    value={form.accentColor}
+                    onChange={(e) => setForm({...form, accentColor: e.target.value})}
+                    className="h-10 bg-slate-800 border-gray-700 mt-1 w-full"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-sm text-slate-400 font-medium">Nivel Educativo (opcional)</label>
+                  <Input
+                    value={form.educationLevel}
+                    onChange={(e) => setForm({...form, educationLevel: e.target.value})}
+                    className="bg-slate-800 border-slate-700 mt-1"
+                    placeholder="Ej: Primaria, Bachillerato, Universidad"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4 border-t border-slate-700">
+                <Button 
+                  type="submit" 
+                  disabled={status === 'loading'}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 font-semibold"
+                >
+                  {status === 'loading' ? 'Creando...' : '✓ Crear Instituto'}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowForm(false)}
+                  className="px-6"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

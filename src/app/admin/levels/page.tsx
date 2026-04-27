@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2, Edit, Save, X } from 'lucide-react'
 
-interface Level { id: string; name: string; order: number; _count: { groups: number } }
-interface Group { id: string; name: string; order: number; _count: { students: number } }
+interface Level { id: string; name: string; order: number; active: boolean; _count: { groups: number } }
+interface Group { id: string; name: string; order: number; active: boolean; _count: { students: number } }
 
 export default function LevelsPage() {
   const [levels, setLevels] = useState<Level[]>([])
@@ -17,7 +17,9 @@ export default function LevelsPage() {
   const [newLevel, setNewLevel] = useState('')
   const [newGroup, setNewGroup] = useState('')
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
-  const institutionId = 'demo' // Would come from session
+  const [editingLevel, setEditingLevel] = useState<Level | null>(null)
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null)
+  const institutionId = 'demo'
 
   useEffect(() => { loadData() }, [])
 
@@ -30,6 +32,13 @@ export default function LevelsPage() {
     setLoading(false)
   }
 
+  const loadGroups = async (levelId: string) => {
+    setSelectedLevel(levelId)
+    const res = await fetch(`/api/groups?levelId=${levelId}&institutionId=${institutionId}`)
+    const data = await res.json()
+    setGroups(data.groups || [])
+  }
+
   const createLevel = async () => {
     if (!newLevel) return
     await fetch('/api/levels', {
@@ -38,6 +47,17 @@ export default function LevelsPage() {
       body: JSON.stringify({ institutionId, name: newLevel })
     })
     setNewLevel('')
+    loadData()
+  }
+
+  const updateLevel = async () => {
+    if (!editingLevel) return
+    await fetch('/api/levels', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingLevel.id, name: editingLevel.name, order: editingLevel.order, active: editingLevel.active })
+    })
+    setEditingLevel(null)
     loadData()
   }
 
@@ -58,17 +78,21 @@ export default function LevelsPage() {
     loadGroups(selectedLevel)
   }
 
+  const updateGroup = async () => {
+    if (!editingGroup) return
+    await fetch('/api/groups', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingGroup.id, name: editingGroup.name, order: editingGroup.order, active: editingGroup.active })
+    })
+    setEditingGroup(null)
+    if (selectedLevel) loadGroups(selectedLevel)
+  }
+
   const deleteGroup = async (id: string) => {
     if (!confirm('Eliminar grupo?')) return
     await fetch(`/api/groups?id=${id}`, { method: 'DELETE' })
     if (selectedLevel) loadGroups(selectedLevel)
-  }
-
-  const loadGroups = async (levelId: string) => {
-    setSelectedLevel(levelId)
-    const res = await fetch(`/api/groups?levelId=${levelId}&institutionId=${institutionId}`)
-    const data = await res.json()
-    setGroups(data.groups || [])
   }
 
   if (loading) return <div className="p-8 text-white">Cargando...</div>
@@ -102,18 +126,39 @@ export default function LevelsPage() {
             <div className="space-y-2">
               {levels.map(level => (
                 <div key={level.id} className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                  <span className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <Button size="sm" variant="ghost" onClick={() => loadGroups(level.id)}>
                       {level.name}
                     </Button>
                     <Badge variant="outline">{level._count.groups} grupos</Badge>
-                  </span>
-                  <Button size="sm" variant="destructive" onClick={() => deleteLevel(level.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <Badge variant={level.active ? 'default' : 'secondary'}>{level.active ? 'Activo' : 'Inactivo'}</Badge>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => setEditingLevel({ ...level, _count: { groups: 0 } })}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => deleteLevel(level.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
+
+            {/* Edit Level */}
+            {editingLevel && (
+              <div className="mt-4 p-4 bg-slate-600 rounded-lg space-y-2">
+                <Input
+                  value={editingLevel.name}
+                  onChange={(e) => setEditingLevel({ ...editingLevel, name: e.target.value })}
+                  className="bg-slate-700 border-slate-600"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={updateLevel} className="bg-green-500"><Save className="h-4 w-4 mr-2" /> Guardar</Button>
+                  <Button onClick={() => setEditingLevel(null)} variant="outline"><X className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -144,16 +189,37 @@ export default function LevelsPage() {
               <div className="space-y-2">
                 {groups.map(group => (
                   <div key={group.id} className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                    <span className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       {group.name}
                       <Badge variant="outline">{group._count.students} estudiantes</Badge>
-                    </span>
-                    <Button size="sm" variant="destructive" onClick={() => deleteGroup(group.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Badge variant={group.active ? 'default' : 'secondary'}>{group.active ? 'Activo' : 'Inactivo'}</Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => setEditingGroup({ ...group, _count: { students: 0 } })}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => deleteGroup(group.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {/* Edit Group */}
+              {editingGroup && (
+                <div className="mt-4 p-4 bg-slate-600 rounded-lg space-y-2">
+                  <Input
+                    value={editingGroup.name}
+                    onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                    className="bg-slate-700 border-slate-600"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={updateGroup} className="bg-green-500"><Save className="h-4 w-4 mr-2" /> Guardar</Button>
+                    <Button onClick={() => setEditingGroup(null)} variant="outline"><X className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

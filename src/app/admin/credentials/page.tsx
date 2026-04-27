@@ -12,6 +12,8 @@ interface StudentData {
   name: string
   code: string
   photo: string
+  email: string
+  guardianEmail: string | null
   level: string
   group: string
   institution: {
@@ -57,20 +59,32 @@ export default function CredentialPage() {
   const sendCredentialEmail = async () => {
     if (!student) return
     
+    const recipientEmail = student.guardianEmail || student.email
+    if (!recipientEmail) {
+      alert('No hay email configurado para este estudiante')
+      return
+    }
+    
     try {
-      const res = await fetch('/api/students/send-credential', {
+      const res = await fetch('/api/credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: student.id })
+        body: JSON.stringify({ 
+          studentId: student.id, 
+          institutionId: student.institution.name // TODO: pasar ID real
+        })
       })
       
       const data = await res.json()
       
       if (data.success) {
-        alert('Credencial enviada por email')
+        alert('Credencial enviada a: ' + recipientEmail)
+      } else {
+        alert('Error: ' + data.error)
       }
     } catch (e) {
       console.error(e)
+      alert('Error al enviar')
     }
   }
 
@@ -143,6 +157,16 @@ export default function CredentialPage() {
                 </p>
               </div>
               
+              {/* Email destination */}
+              <div className="text-center mb-4">
+                <p className="text-sm text-slate-300">
+                  📧 Se enviará a: <span className="font-medium">{(student.guardianEmail || student.email || 'Sin email')}</span>
+                  {!student.guardianEmail && !student.email && (
+                    <span className="text-red-400 ml-2">(sin email configurado)</span>
+                  )}
+                </p>
+              </div>
+              
               {/* Actions */}
               <div className="flex gap-2 mt-4 justify-center">
                 <Button onClick={downloadCredential} className="bg-blue-500">
@@ -153,7 +177,11 @@ export default function CredentialPage() {
                   <Printer className="h-4 w-4 mr-2" />
                   Imprimir
                 </Button>
-                <Button onClick={sendCredentialEmail} className="bg-purple-500">
+                <Button 
+                  onClick={sendCredentialEmail} 
+                  className="bg-purple-500"
+                  disabled={!(student?.guardianEmail || student?.email)}
+                >
                   <Mail className="h-4 w-4 mr-2" />
                   Enviar Email
                 </Button>

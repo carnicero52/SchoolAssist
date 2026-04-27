@@ -42,6 +42,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT - Update level
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, name, order, active } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    }
+
+    const level = await db.level.update({
+      where: { id },
+      data: { name, order, active }
+    })
+
+    return NextResponse.json({ success: true, level })
+  } catch (error) {
+    console.error('Update level error:', error)
+    return NextResponse.json({ error: 'Error al actualizar' }, { status: 500 })
+  }
+}
+
 // DELETE - Delete level
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url)

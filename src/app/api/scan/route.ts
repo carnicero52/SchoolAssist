@@ -92,10 +92,12 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Send notifications to guardians
-    const notifyEnabled = student.institution.callmebotKey || student.institution.telegramToken
+    // Send notifications to guardians using dedicated parents key or fallback
+    const parentsKey = student.institution.callmebotKeyParents || student.institution.callmebotKey
+    const guardianContact = student.guardianEmail || student.email
+    const notifyEnabled = parentsKey || student.institution.telegramToken
     
-    if (notifyEnabled && (student.guardianPhone || student.guardianEmail || student.telegramChatId)) {
+    if (notifyEnabled && (student.guardianPhone || student.whatsappPhone || guardianContact || student.telegramChatId)) {
       const message = type === 'in' 
         ? `🚸 ALERTA: ${student.name} ha INGRESADO a las ${now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`
         : `🚸 ALERTA: ${student.name} ha SALIDO a las ${now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`
@@ -105,12 +107,12 @@ export async function POST(request: NextRequest) {
         await sendTelegramNotification(student.telegramChatId, message, student.institution.telegramToken)
       }
       
-      if (student.whatsappPhone && student.institution.callmebotKey) {
-        await sendWhatsAppNotification(student.whatsappPhone, message, student.institution.callmebotKey)
+      if (student.whatsappPhone && parentsKey) {
+        await sendWhatsAppNotification(student.whatsappPhone, message, parentsKey)
       }
       
-      if (student.guardianEmail && student.institution.smtpHost) {
-        await sendEmailNotification(student.guardianEmail, type === 'in' ? 'Entrada registrada' : 'Salida registrada', message)
+      if (guardianContact && student.institution.smtpHost) {
+        await sendEmailNotification(guardianContact, type === 'in' ? 'Entrada registrada' : 'Salida registrada', message)
       }
     }
 

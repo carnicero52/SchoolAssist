@@ -37,8 +37,9 @@ export async function POST(request: NextRequest) {
         from: institution.smtpFrom || undefined
       })
     } else if (!channel) {
-      // Broadcast - send to all with notifications enabled
-      if (institution.telegramToken || institution.callmebotKey) {
+      // Broadcast - send to all with notifications enabled using parents WhatsApp key
+      const parentsKey = institution.callmebotKeyParents || institution.callmebotKey
+      if (institution.telegramToken || parentsKey) {
         const students = await db.student.findMany({
           where: { 
             institutionId,
@@ -53,8 +54,8 @@ export async function POST(request: NextRequest) {
           if (student.telegramChatId && institution.telegramToken) {
             await sendTelegramNotification(student.telegramChatId, message, institution.telegramToken)
           }
-          if (student.whatsappPhone && institution.callmebotKey) {
-            await sendWhatsAppNotification(student.whatsappPhone, message, institution.callmebotKey)
+          if (student.whatsappPhone && parentsKey) {
+            await sendWhatsAppNotification(student.whatsappPhone, message, parentsKey)
           }
         }
         sent = true

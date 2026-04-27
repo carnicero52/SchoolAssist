@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
-import { Plus, Trash2, Shield, Users } from 'lucide-react'
+import { Plus, Trash2, Shield, Users, Edit, Save, X } from 'lucide-react'
 
 interface Staff { id: string; name: string; email: string; role: string; phone: string; active: boolean }
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin', phone: '' })
+  const [form, setForm] = useState({ id: '', name: '', email: '', password: '', role: 'admin', phone: '', active: true })
+  const [editingId, setEditingId] = useState<string | null>(null)
   const institutionId = 'demo'
 
   useEffect(() => { loadData() }, [])
@@ -34,7 +35,20 @@ export default function StaffPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ institutionId, ...form })
     })
-    setForm({ name: '', email: '', password: '', role: 'admin', phone: '' })
+    resetForm()
+    loadData()
+  }
+
+  const updateStaff = async () => {
+    if (!form.id) return
+    const body: any = { id: form.id, name: form.name, email: form.email, role: form.role, phone: form.phone, active: form.active }
+    if (form.password) body.newPassword = form.password
+    await fetch('/api/staff', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    resetForm()
     loadData()
   }
 
@@ -42,6 +56,16 @@ export default function StaffPage() {
     if (!confirm('Eliminar usuario?')) return
     await fetch(`/api/staff?id=${id}`, { method: 'DELETE' })
     loadData()
+  }
+
+  const openEdit = (s: Staff) => {
+    setForm({ id: s.id, name: s.name, email: s.email, password: '', role: s.role, phone: s.phone || '', active: s.active })
+    setEditingId(s.id)
+  }
+
+  const resetForm = () => {
+    setForm({ id: '', name: '', email: '', password: '', role: 'admin', phone: '', active: true })
+    setEditingId(null)
   }
 
   const getRoleBadge = (role: string) => {
@@ -62,7 +86,7 @@ export default function StaffPage() {
 
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle>Agregar Usuario</CardTitle>
+            <CardTitle>{editingId ? 'Editar Usuario' : 'Agregar Usuario'}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -81,7 +105,7 @@ export default function StaffPage() {
               />
               <Input
                 type="password"
-                placeholder="Contraseña"
+                placeholder={editingId ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}
                 value={form.password}
                 onChange={(e) => setForm({...form, password: e.target.value})}
                 className="bg-slate-700 border-slate-600"
@@ -101,10 +125,25 @@ export default function StaffPage() {
                 <option value="portero">Portero/Vigilante</option>
                 <option value="director">Director</option>
               </select>
-              <Button onClick={createStaff} className="w-full bg-blue-500">
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Usuario
-              </Button>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(e) => setForm({...form, active: e.target.checked})}
+                  className="h-4 w-4"
+                />
+                <label>Usuario activo</label>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={editingId ? updateStaff : createStaff} className="flex-1 bg-green-500">
+                  {editingId ? 'Actualizar' : 'Crear'}
+                </Button>
+                {editingId && (
+                  <Button onClick={resetForm} variant="outline">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -132,10 +171,16 @@ export default function StaffPage() {
                     <Badge className={getRoleBadge(s.role)}>
                       {s.role === 'director' ? 'Director' : s.role === 'admin' ? 'Admin' : 'Portero'}
                     </Badge>
+                    <Badge variant={s.active ? 'default' : 'secondary'}>{s.active ? 'Activo' : 'Inactivo'}</Badge>
                   </div>
-                  <Button size="sm" variant="destructive" onClick={() => deleteStaff(s.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(s)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => deleteStaff(s.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               {staff.length === 0 && (

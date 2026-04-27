@@ -28,15 +28,16 @@ model Institution {
   slogan      String?
   
   // Notification Settings
-  telegramToken     String?
-  telegramChatId   String?
-  smtpHost         String?
-  smtpPort         Int?
-  smtpUser         String?
-  smtpPassword    String?
-  smtpFrom        String?
-  callmebotKey     String?
-  callmebotKeyParents String?
+  telegramToken          String?
+  telegramChatId        String?
+  smtpHost              String?
+  smtpPort              Int?
+  smtpUser              String?
+  smtpPassword          String?
+  smtpFrom              String?
+  callmebotKey          String?
+  callmebotKeyParents   String?
+  directorWhatsappPhone String?
   
   // Academic Structure
   educationLevel   String?
